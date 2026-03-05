@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package order.v1;
+
+import "buf/validate/validate.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OrderProto";
+option java_package = "com.example.order.v1";
+
+// Order represents a purchase that can be ingested and decorated in a streaming flow.
+message Order {
+  uint64 created_at = 1 [(buf.validate.field).required = true];
+  uint64 updated_at = 2 [(buf.validate.field).required = true];
+  string user_id = 3 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ]; // Links to the User table (User.uuid).
+
+  message Amount {
+    string currency = 1 [(buf.validate.field).string = {min_len: 1}]; // Only USD for now.
+    uint32 units = 2; // e.g. 100 for dollars.
+    uint32 nanos = 3; // e.g. 10 for $100.10 USD.
+  }
+
+  message Product {
+    string product_id = 1 [
+      (buf.validate.field).string.uuid = true,
+      (buf.validate.field).required = true
+    ]; // UUID.
+    uint32 num_items = 3 [(buf.validate.field).uint32 = {gte: 1}]; // How many units were purchased.
+    Amount unit_cost = 4 [(buf.validate.field).required = true]; // Cost per unit.
+    int32 percent_discount = 5; // On-sale at time of purchase (0–100).
+  }
+
+  repeated Product products = 4 [(buf.validate.field).repeated = {min_items: 1}]; // One or more line items.
+  Amount total = 5 [(buf.validate.field).required = true];
+  bool coupon_code_used = 6;
+}

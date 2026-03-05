@@ -31,9 +31,10 @@ Without `buf registry login`, targets like `make build` and `make generate` can 
 
 ## Project layout
 
-- `protos/` — Protobuf definitions (e.g. `user/v1/user.proto`).
+- `protos/` — Protobuf definitions (e.g. `user/v1/user.proto`, `order/v1/order.proto`).
 - `gen/python/` — Generated Python packages from those protos (created by `buf generate`).
-- `gen/python/user/v1/descriptor.bin` — Serialized `FileDescriptorSet` for Spark/ingest (created by `make descriptor`).
+- `src/learning_spark_datagen/datagen/` — Data generators (`gen_user.py`, `gen_order.py`); each follows the same pattern (deterministic from seed, NDJSON I/O).
+- `gen/python/*/v1/descriptor.bin` — Serialized `FileDescriptorSet` for Spark/ingest (created by `make descriptor`).
 
 ## Commands
 
@@ -52,39 +53,74 @@ From the `learning-spark-datagen` directory:
 
 ## Data generation examples
 
-Generate fake users with deterministic output (same `--seed` and `--count` produce the same users, including UUIDs).
+All generators produce deterministic output: the same `--seed` and `--count` yield the same records (including UUIDs and timestamps).
 
-**Print users as newline-delimited JSON to stdout (one JSON object per line):**
+### Users only
+
+**Print users as newline-delimited JSON to stdout:**
 
 ```bash
 # 10 users, default seed 42
-uv run main.py --generate --count 10
+uv run main.py --generate --type users --count 10
 
-# 1000 users, custom seed for reproducibility
-uv run main.py --generate --count 1000 --seed 12345
+# 1000 users, custom seed
+uv run main.py --generate --type users --count 1000 --seed 12345
 ```
 
-**Write users to a file (stable UUIDs and timestamps for later runs):**
+**Write users to a file:**
 
 ```bash
-# Write 1000 users to users.ndjson
-uv run main.py --generate --count 1000 --output users.ndjson
-
-# Same seed and count → same file contents
-uv run main.py --generate --count 1000 --seed 42 --output users.ndjson
+uv run main.py --generate --type users --count 1000 --output users.ndjson
 ```
 
-**Redirect or pipe stdout:**
+### Orders only (standalone)
+
+Orders can be generated without a user file; `user_id` will be random deterministic UUIDs (no link to a User table):
 
 ```bash
-# Save NDJSON to a file from stdout
-uv run main.py --generate --count 100 > users.ndjson
-
-# Pipe into another tool (e.g. jq for one record)
-uv run main.py --generate --count 1 | head -n 1 | jq .
+uv run main.py --generate --type orders --count 500 --output orders.ndjson
 ```
 
-When `--output` is set, the script writes to that file and prints a short message to stderr (e.g. `Wrote 1000 users to users.ndjson`). When `--output` is omitted, each user is printed as a single line of JSON to stdout.
+### Using both generators together (design pattern)
+
+Linking dependent data (e.g. orders to users) is a core design pattern: generate the parent entity first, write it to NDJSON, then generate the child entity and pass the parent file so foreign keys match.
+
+1. **Generate users** and write them to a file (these UUIDs become the canonical “user table”).
+2. **Generate orders** with `--users-file` pointing at that file. Every order’s `user_id` will be one of those user UUIDs, so orders are linked to users for joins, streaming, or analytics.
+
+**Example: users then orders (linked):**
+
+```bash
+# 1. Generate users and save to NDJSON
+uv run main.py --generate --type users --count 100 --output users.ndjson
+
+# 2. Generate orders whose user_id values reference those users
+uv run main.py --generate --type orders --count 500 --users-file users.ndjson --output orders.ndjson
+```
+
+Same seed and counts produce the same `users.ndjson` and `orders.ndjson`; order rows can be joined to user rows on `user_id` = `User.uuid`.
+
+**Example: different seeds or counts**
+
+```bash
+# Reproducible pipeline
+uv run main.py --generate --type users --count 200 --seed 42 --output users.ndjson
+uv run main.py --generate --type orders --count 1000 --seed 42 --users-file users.ndjson --output orders.ndjson
+```
+
+Use this pattern whenever you add a new generator that references another entity (e.g. a future “shipments” generator that references orders).
+
+### Output behavior
+
+- With `--output FILE`: the script writes all records to that file and prints a short message to stderr (e.g. `Wrote 100 users to users.ndjson`).
+- Without `--output`: each record is printed as one line of JSON to stdout.
+
+**Redirect or pipe (users example):**
+
+```bash
+uv run main.py --generate --type users --count 100 > users.ndjson
+uv run main.py --generate --type users --count 1 | head -n 1 | jq .
+```
 
 ## Quick start
 
@@ -92,9 +128,9 @@ From the `learning-spark-datagen` directory:
 
 ```bash
 uv sync
-uv run main.py --generate --count 5
+uv run main.py --generate --type users --count 5
 ```
 
-You’ll get 5 users as one JSON object per line on stdout. Use `--output FILE` to write to a file instead.
+You’ll get 5 users as one JSON object per line on stdout. Use `--output FILE` to write to a file. For the full “users then orders” workflow, see [Using both generators together](#using-both-generators-together-design-pattern) above.
 
 ## Development
