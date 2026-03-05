@@ -17,6 +17,9 @@ dependencies = [
 [tool.uv]
 extra-index-url = ["https://buf.build/gen/python"]
 
+[tool.pytest.ini_options]
+pythonpath = ["src", "gen/python"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.8.0",
