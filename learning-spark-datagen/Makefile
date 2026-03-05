@@ -21,7 +21,8 @@ test:
 # (read/ingest). Output is Protobuf binary format; --exclude-source-info
 # keeps the file smaller. See: https://buf.build/docs/reference/descriptors/
 descriptor:
-	buf build -o gen/python/user/v1/descriptor.bin
+	@mkdir -p gen/descriptors
+	buf build -o gen/descriptors/descriptor.bin
 
 # Bump the project version in pyproject.toml.
 # Usage: make release [bump=minor]
