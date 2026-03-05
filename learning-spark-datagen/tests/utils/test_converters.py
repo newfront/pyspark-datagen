@@ -7,7 +7,7 @@ from learning_spark_datagen.utils import Converters
 
 
 # Project root when running pytest from learning-spark-datagen/ (pyproject pythonpath = src, gen/python)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _DESCRIPTOR_PATH = _PROJECT_ROOT / "gen" / "descriptors" / "descriptor.bin"
 _RESOURCES = _PROJECT_ROOT / "tests" / "resources"
 _DELTA_BASE = _RESOURCES / "delta"
@@ -42,7 +42,7 @@ def test_protobuf_to_df_users(spark):
     # Write to Delta for downstream use
     delta_path = _DELTA_BASE / "users"
     delta_path.parent.mkdir(parents=True, exist_ok=True)
-    df.write.format("delta").mode("overwrite").save(str(delta_path))
+    df.coalesce(1).write.format("delta").mode("overwrite").save(str(delta_path))
 
 
 def test_protobuf_to_df_orders(spark):
@@ -74,4 +74,4 @@ def test_protobuf_to_df_orders(spark):
     # Write to Delta for downstream use
     delta_path = _DELTA_BASE / "orders"
     delta_path.parent.mkdir(parents=True, exist_ok=True)
-    df.write.format("delta").mode("overwrite").save(str(delta_path))
+    df.coalesce(1).write.format("delta").mode("overwrite").save(str(delta_path))
