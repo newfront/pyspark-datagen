@@ -34,7 +34,8 @@ Without `buf registry login`, targets like `make build` and `make generate` can 
 - `protos/` — Protobuf definitions (e.g. `user/v1/user.proto`, `order/v1/order.proto`).
 - `gen/python/` — Generated Python packages from those protos (created by `buf generate`).
 - `src/learning_spark_datagen/datagen/` — Data generators (`gen_user.py`, `gen_order.py`); each follows the same pattern (deterministic from seed, NDJSON I/O).
-- `gen/python/*/v1/descriptor.bin` — Serialized `FileDescriptorSet` for Spark/ingest (created by `make descriptor`).
+- `gen/descriptors/descriptor.bin` — Serialized `FileDescriptorSet` for Spark/ingest (created by `make descriptor`).
+- `src/learning_spark_datagen/utils/` — `Converters.protobuf_to_df` for turning generated protobuf bytes into Spark DataFrames (e.g. for Delta Lake).
 
 ## Commands
 
@@ -45,7 +46,7 @@ From the `learning-spark-datagen` directory:
 | `make build`      | Lint/format protos, run `buf generate`, then format/lint Python. |
 | `make generate`   | Run `make build`, then `main.py --generate --count 100`. |
 | `make test`       | Run pytest. |
-| `make descriptor` | Write `gen/python/user/v1/descriptor.bin` for Spark. |
+| `make descriptor` | Write `gen/descriptors/descriptor.bin` for Spark (all protos in one descriptor). |
 | `make release [bump=patch\|minor\|major]` | Bump version in `pyproject.toml`. |
 | `make package`    | Build wheel and sdist into `dist/`. |
 | `make install-dist` | Install from `dist/` using Buf index for deps. |
@@ -109,6 +110,17 @@ uv run main.py --generate --type orders --count 1000 --seed 42 --users-file user
 ```
 
 Use this pattern whenever you add a new generator that references another entity (e.g. a future “shipments” generator that references orders).
+
+### Protobuf to Spark DataFrame (Delta Lake)
+
+The `utils.Converters` class converts serialized protobuf bytes into Spark DataFrames for ingestion (e.g. into Delta Lake):
+
+1. Run `make descriptor` to produce `gen/descriptors/descriptor.bin` (single descriptor for all protos).
+2. Generate data (e.g. `list[User]` or `list[Order]`), then serialize: `[msg.SerializeToString() for msg in messages]`.
+3. Call `Converters.protobuf_to_df(data, spark, descriptor_path, message_name)` with the correct fully qualified message name (`user.v1.User`, `order.v1.Order`, etc.).
+4. Write the result with `df.write.format("delta").mode("overwrite").save(path)`.
+
+Tests in `tests/test_converters.py` demonstrate this using static NDJSON in `tests/resources/` and write Delta tables to `tests/resources/delta/users/` and `tests/resources/delta/orders/` for reference. Use `tests.spark_session.generate_spark_session()` for a local SparkSession with Delta and Protobuf support.
 
 ### Output behavior
 

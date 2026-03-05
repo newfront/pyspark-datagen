@@ -51,6 +51,11 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# CRC checksum files (e.g. Delta Lake, Parquet)
+_delta_log
+*.parquet
+*.crc
+
 # Translations
 *.mo
 *.pot
