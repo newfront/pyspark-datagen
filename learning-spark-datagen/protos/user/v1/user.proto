@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UserProto";
+option java_package = "com.example.user.v1";
+
+// User represents an identity that can be linked to orders.
+message User {
+  // Unique identifier (UUID).
+  string uuid = 1 [(buf.validate.field).string.uuid = true];
+  string first_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 42
+  }];
+  string last_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 42
+  }];
+  string email_address = 4 [(buf.validate.field).string.email = true];
+  // When the user was created; must not be in the future.
+  google.protobuf.Timestamp created = 5 [(buf.validate.field).timestamp.lt_now = true];
+  // When the user was last updated.
+  google.protobuf.Timestamp updated = 6;
+  // IANA time zone for the user (e.g. "America/Los_Angeles").
+  string time_zone = 7;
+  // Account status; affects whether the user can place or be linked to orders.
+  UserStatus status = 8 [(buf.validate.field).enum.defined_only = true];
+  // BCP-47 locale (e.g. "en-US") for order display and notifications.
+  string locale = 9;
+}
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ACTIVE = 1;
+  USER_STATUS_INACTIVE = 2;
+}
