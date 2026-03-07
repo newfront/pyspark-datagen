@@ -95,6 +95,12 @@ class GenUser:
             users.append(self.generate_one(index=i))
         return users
 
+    def generate_range(self, start: int, end: int) -> list[user_pb2.User]:
+        """Generate users for indices [start, end). Useful for batched Delta writes."""
+        if start >= end:
+            return []
+        return [self.generate_one(index=i) for i in range(start, end)]
+
     @staticmethod
     def user_to_dict(user: user_pb2.User) -> dict:
         """Convert a User proto to a JSON-serializable dict (same format as NDJSON)."""

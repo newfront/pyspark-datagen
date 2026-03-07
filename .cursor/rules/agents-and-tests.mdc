@@ -1,0 +1,17 @@
+---
+description: Update AGENTS.md when improving solutions; add tests for changes; one problem at a time
+alwaysApply: true
+---
+
+# AGENTS.md and tests when improving
+
+When you find a better way to solve a problem:
+
+1. **Update AGENTS.md**  
+   Document the improved approach in `AGENTS.md` (workflows, CLI flags, file locations, or caveats) so future runs and other agents use the better method.
+
+2. **Add or extend unit tests**  
+   For any code change, introduce or update tests that verify the new behavior and that existing behavior still works. Run the test suite to confirm nothing else breaks.
+
+3. **One problem at a time**  
+   Tackle a single improvement or fix per change: implement it, update AGENTS.md if needed, add/run tests, then move on.

@@ -127,6 +127,12 @@ class GenOrder:
             return []
         return [self.generate_one(index=i) for i in range(count)]
 
+    def generate_range(self, start: int, end: int) -> list[order_pb2.Order]:
+        """Generate orders for indices [start, end). Useful for batched Delta writes."""
+        if start >= end:
+            return []
+        return [self.generate_one(index=i) for i in range(start, end)]
+
     @staticmethod
     def order_to_dict(order: order_pb2.Order) -> dict:
         """Convert an Order proto to a JSON-serializable dict (NDJSON format)."""
