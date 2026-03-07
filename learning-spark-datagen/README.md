@@ -120,12 +120,70 @@ The `utils.Converters` class converts serialized protobuf bytes into Spark DataF
 3. Call `Converters.protobuf_to_df(data, spark, descriptor_path, message_name)` with the correct fully qualified message name (`user.v1.User`, `order.v1.Order`, etc.).
 4. Write the result with `df.write.format("delta").mode("overwrite").save(path)`.
 
-Tests in `tests/test_converters.py` demonstrate this using static NDJSON in `tests/resources/` and write Delta tables to `tests/resources/delta/users/` and `tests/resources/delta/orders/` for reference. Use `tests.spark_session.generate_spark_session()` for a local SparkSession with Delta and Protobuf support.
+Tests in `tests/utils/test_converters.py` demonstrate this using static NDJSON in `tests/resources/` and write Delta tables to `tests/resources/delta/users/` and `tests/resources/delta/orders/` for reference. Use `learning_spark_datagen.utils.generate_spark_session()` for a local SparkSession with Delta and Protobuf support.
+
+#### Static NDJSON → Delta (convert existing JSON to Delta tables)
+
+To turn an existing NDJSON file (e.g. `users.ndjson`, `orders.ndjson`) into a Delta table, use the NDJSON reader utilities. They use the Google protobuf JSON utility to parse each line into the correct message type, then convert to a DataFrame and optionally write Delta:
+
+```python
+from pathlib import Path
+from learning_spark_datagen.utils import (
+    generate_spark_session,
+    ndjson_to_protobuf_bytes,
+    ndjson_file_to_dataframe,
+    ndjson_file_to_delta,
+)
+from learning_spark_datagen.utils import Converters
+
+DESCRIPTOR = Path("gen/descriptors/descriptor.bin")
+spark = generate_spark_session()
+
+# Option 1: Read NDJSON → bytes, then convert to DataFrame and write Delta yourself
+bytes_list = ndjson_to_protobuf_bytes("users.ndjson", "user.v1.User")
+df = Converters.protobuf_to_df(bytes_list, spark, DESCRIPTOR, "user.v1.User")
+df.write.format("delta").mode("overwrite").save("/path/to/delta/table")
+
+# Option 2: NDJSON file → DataFrame (then write Delta as needed)
+df = ndjson_file_to_dataframe("users.ndjson", "user.v1.User", spark, DESCRIPTOR)
+df.write.format("delta").mode("overwrite").save("/path/to/delta/table")
+
+# Option 3: One call to read NDJSON and write Delta
+ndjson_file_to_delta(
+    "users.ndjson", "user.v1.User", spark, DESCRIPTOR, "/path/to/delta/table"
+)
+```
+
+Supported `message_name` values: `user.v1.User`, `order.v1.Order` (registry is in `utils.ndjson_reader`).
+
+### Output format: `--format json | delta | console`
+
+- **`json`** (default): Write newline-delimited JSON. With `--output PATH`, writes to that file; without `--output`, prints to stdout.
+- **`delta`**: Write a Delta table to the path given by `--output`. **`--output` is required** when using `--format delta`. The path can be any local or cloud path (e.g. `/path/to/table`, `s3://bucket/table`).
+- **`console`**: Print one JSON object per line to stdout (same as `--format json` with no `--output`).
+
+**Examples:**
+
+```bash
+# Delta table at an arbitrary path (local or cloud)
+uv run main.py --generate --type users --count 1000 --seed 12345 --output /path/to/table --format delta
+
+uv run main.py --generate --type orders --count 500 --users-file users.ndjson --output /path/to/table --format delta
+
+# JSON to file (default format)
+uv run main.py --generate --type users --count 100 --output users.ndjson
+
+# Console: JSON lines to stdout
+uv run main.py --generate --type users --count 5 --format console
+```
+
+Ensure `gen/descriptors/descriptor.bin` exists (e.g. run `make descriptor` or `make build`) before using `--format delta`.
 
 ### Output behavior
 
-- With `--output FILE`: the script writes all records to that file and prints a short message to stderr (e.g. `Wrote 100 users to users.ndjson`).
-- Without `--output`: each record is printed as one line of JSON to stdout.
+- With `--output PATH` and `--format json`: writes NDJSON to that path and prints a short message to stderr (e.g. `Wrote 100 users to users.ndjson`).
+- With `--output PATH` and `--format delta`: writes a Delta table to that path (e.g. `Wrote 100 users to Delta table /path/to/table`).
+- Without `--output`, or with `--format console`: each record is printed as one line of JSON to stdout.
 
 **Redirect or pipe (users example):**
 
@@ -143,6 +201,6 @@ uv sync
 uv run main.py --generate --type users --count 5
 ```
 
-You’ll get 5 users as one JSON object per line on stdout. Use `--output FILE` to write to a file. For the full “users then orders” workflow, see [Using both generators together](#using-both-generators-together-design-pattern) above.
+You’ll get 5 users as one JSON object per line on stdout. Use `--output PATH` to write to a file (JSON) or Delta table (with `--format delta`). For the full “users then orders” workflow, see [Using both generators together](#using-both-generators-together-design-pattern) above.
 
 ## Development
