@@ -59,3 +59,40 @@ class Converters:
                 binaryDescriptorSet=descriptor_bytes,
             ),
         ).selectExpr(f"{column_name}.*")
+
+    @staticmethod
+    def write_df_to_delta(
+        df: DataFrame, delta_path: str | Path, mode: str = "overwrite"
+    ) -> None:
+        """Write a DataFrame to a Delta table (mode: overwrite or append)."""
+        Path(delta_path).parent.mkdir(parents=True, exist_ok=True)
+        df.write.format("delta").mode(mode).save(str(delta_path))
+
+
+def ndjson_file_to_delta(
+    ndjson_path: str | Path,
+    message_name: str,
+    spark: SparkSession,
+    descriptor_path: str | Path,
+    delta_path: str | Path,
+) -> None:
+    """Read an NDJSON file, convert to DataFrame via protobuf descriptor, write Delta table.
+
+    message_name must be "user.v1.User" or "order.v1.Order" (determines which reader is used).
+    """
+    from learning_spark_datagen.datagen import GenOrder, GenUser
+
+    if message_name == "user.v1.User":
+        records = GenUser.read_ndjson(ndjson_path)
+    elif message_name == "order.v1.Order":
+        records = GenOrder.read_ndjson(ndjson_path)
+    else:
+        raise ValueError(f"Unsupported message_name: {message_name}")
+    data = [r.SerializeToString() for r in records]
+    df = Converters.protobuf_to_df(
+        data=data,
+        spark=spark,
+        descriptor_path=descriptor_path,
+        message_name=message_name,
+    )
+    Converters.write_df_to_delta(df, delta_path)
