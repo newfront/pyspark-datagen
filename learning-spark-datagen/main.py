@@ -11,7 +11,12 @@ for _path in (_root / "src", _root / "gen" / "python"):
     if _path.exists() and str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from learning_spark_datagen.datagen import GenUser, GenOrder  # noqa: E402
+from learning_spark_datagen.datagen import (  # noqa: E402
+    GenUser,
+    GenOrder,
+    GenGame,
+    GenLeaderboardEntry,
+)
 from learning_spark_datagen.utils import Converters, generate_spark_session  # noqa: E402
 
 
@@ -20,7 +25,7 @@ def main():
     parser.add_argument("--generate", action="store_true", help="Run in generate mode")
     parser.add_argument(
         "--type",
-        choices=("users", "orders"),
+        choices=("users", "orders", "games", "leaderboard_entries"),
         default="users",
         help="Type of records to generate (default: users)",
     )
@@ -42,7 +47,14 @@ def main():
         type=Path,
         default=None,
         metavar="FILE",
-        help="NDJSON of users; order user_id will link to these UUIDs (for --type orders)",
+        help="NDJSON of users; order/leaderboard user_id will link to these UUIDs",
+    )
+    parser.add_argument(
+        "--games-file",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="NDJSON of games; leaderboard game_id will link to these UUIDs (for --type leaderboard_entries)",
     )
     parser.add_argument(
         "--format",
@@ -58,7 +70,7 @@ def main():
             to_dict = GenUser.user_to_dict
             write_ndjson = GenUser.write_ndjson
             message_name = "user.v1.User"
-        else:
+        elif args.type == "orders":
             user_ids = None
             if args.users_file and args.users_file.exists():
                 user_ids = [u.uuid for u in GenUser.read_ndjson(args.users_file)]
@@ -66,6 +78,24 @@ def main():
             to_dict = GenOrder.order_to_dict
             write_ndjson = GenOrder.write_ndjson
             message_name = "order.v1.Order"
+        elif args.type == "games":
+            gen = GenGame(seed=args.seed)
+            to_dict = GenGame.game_to_dict
+            write_ndjson = GenGame.write_ndjson
+            message_name = "game.v1.Game"
+        else:  # leaderboard_entries
+            user_ids = None
+            game_ids = None
+            if args.users_file and args.users_file.exists():
+                user_ids = [u.uuid for u in GenUser.read_ndjson(args.users_file)]
+            if args.games_file and args.games_file.exists():
+                game_ids = [g.uuid for g in GenGame.read_ndjson(args.games_file)]
+            gen = GenLeaderboardEntry(
+                seed=args.seed, user_ids=user_ids, game_ids=game_ids
+            )
+            to_dict = GenLeaderboardEntry.entry_to_dict
+            write_ndjson = GenLeaderboardEntry.write_ndjson
+            message_name = "leaderboard.v1.LeaderboardEntry"
         if args.output:
             if args.format == "delta":
                 descriptor_path = _root / "gen" / "descriptors" / "descriptor.bin"
@@ -102,7 +132,7 @@ def main():
                 print(json.dumps(to_dict(rec)))
         return
     print(
-        "Hello from learning-spark-datagen! Use --generate --type users|orders --count N [--output FILE]."
+        "Hello from learning-spark-datagen! Use --generate --type users|orders|games|leaderboard_entries --count N [--output FILE]."
     )
 
 

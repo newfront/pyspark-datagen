@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package leaderboard.v1;
+
+import "buf/validate/validate.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LeaderboardProto";
+option java_package = "com.example.leaderboard.v1";
+
+// LeaderboardEntry links a user to a game with a score and rank (Steam-style leaderboard).
+message LeaderboardEntry {
+  string user_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];  // Links to User.uuid
+  string game_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];  // Links to Game.uuid
+  int64 score = 3 [(buf.validate.field).required = true];  // Leaderboard score (higher = better)
+  uint32 rank = 4 [(buf.validate.field).required = true];  // 1-based rank for this game
+  uint64 played_at = 5 [(buf.validate.field).required = true];  // Unix seconds last played
+}
