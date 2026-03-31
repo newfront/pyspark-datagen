@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package leaderboard.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LeaderboardProto";
+option java_package = "com.example.leaderboard.v1";
+
+// SortMethod controls whether lower or higher scores rank better.
+enum SortMethod {
+  SORT_METHOD_UNSPECIFIED = 0;
+  SORT_METHOD_DESCENDING = 1; // Higher score = better rank (e.g. points).
+  SORT_METHOD_ASCENDING = 2; // Lower score = better rank (e.g. time trials).
+}
+
+// DisplayType describes how scores should be rendered to the player.
+enum DisplayType {
+  DISPLAY_TYPE_UNSPECIFIED = 0;
+  DISPLAY_TYPE_NUMERIC = 1;
+  DISPLAY_TYPE_TIME_SECONDS = 2;
+  DISPLAY_TYPE_TIME_MILLISECONDS = 3;
+}
+
+// LeaderboardEntry is a single player's standing within one snapshot.
+message LeaderboardEntry {
+  // 1-based rank within this snapshot.
+  uint32 rank = 1 [(buf.validate.field).uint32 = {gte: 1}];
+
+  // player_id links to User.uuid in the users table.
+  string player_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Display name of the player (Steam persona name).
+  string player_name = 3 [(buf.validate.field).string = {min_len: 1}];
+
+  // Raw score value; interpreted according to display_type on the parent snapshot.
+  int64 score = 4;
+
+  // Rank in the immediately preceding snapshot (0 = new entrant this snapshot).
+  uint32 previous_rank = 5;
+
+  // Rank change since last snapshot (positive = climbed, negative = fell, 0 = stable/new).
+  int32 rank_delta = 6;
+
+  // Score change since the immediately preceding snapshot (0 for new entrants).
+  int64 score_delta = 7;
+
+  // Cumulative hours the player has spent in the game at snapshot time.
+  double hours_played = 8;
+}
+
+// LeaderboardSnapshot captures the full ranked state of one leaderboard at a point in time.
+// Snapshots are taken hourly; a series of snapshots for the same leaderboard_id enables
+// temporal analysis of gameplay dynamics (score velocity, rank volatility, churn, etc.).
+message LeaderboardSnapshot {
+  // Unique identifier for this snapshot.
+  string snapshot_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Stable identifier for the leaderboard (same across all snapshots of one board).
+  string leaderboard_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Human-readable name of the leaderboard (e.g. "All-Time High Scores").
+  string leaderboard_name = 3 [(buf.validate.field).string = {min_len: 1}];
+
+  // Steam App ID of the game this leaderboard belongs to (e.g. "730" for CS2).
+  string game_id = 4 [(buf.validate.field).string = {min_len: 1}];
+
+  // When this snapshot was captured.
+  google.protobuf.Timestamp captured_at = 5 [(buf.validate.field).required = true];
+
+  // Total number of players on this leaderboard at capture time.
+  uint32 total_entries = 6 [(buf.validate.field).uint32 = {gte: 1}];
+
+  SortMethod sort_method = 7 [(buf.validate.field).enum.defined_only = true];
+  DisplayType display_type = 8 [(buf.validate.field).enum.defined_only = true];
+
+  // Top-N entries for this snapshot (e.g. top 1000).
+  repeated LeaderboardEntry entries = 9 [(buf.validate.field).repeated = {min_items: 1}];
+}

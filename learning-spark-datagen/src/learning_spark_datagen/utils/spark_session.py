@@ -1,5 +1,8 @@
 """SparkSession builder for local and CLI runs (Delta Lake)."""
 
+import os
+import sys
+
 from pyspark.sql import SparkSession
 
 
@@ -8,8 +11,15 @@ def generate_spark_session(app_name: str = "learning-spark-datagen") -> SparkSes
 
     Uses local[*] and Delta 4.x. For production or notebooks, use
     SparkSession.builder.getOrCreate() with your cluster config.
+
+    If the ``MAVEN_PROXY`` environment variable is set, its value is applied as
+    ``spark.jars.repositories`` so Ivy resolves packages through that proxy.
+    When the variable is absent the config key is omitted entirely.
     """
-    return (
+    os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
+    os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+
+    builder = (
         SparkSession.builder.master("local[*]")
         .appName(app_name)
         .config(
@@ -26,5 +36,10 @@ def generate_spark_session(app_name: str = "learning-spark-datagen") -> SparkSes
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
         .config("spark.sql.session.timeZone", "UTC")
-        .getOrCreate()
     )
+
+    maven_proxy = os.environ.get("MAVEN_PROXY")
+    if maven_proxy:
+        builder = builder.config("spark.jars.repositories", maven_proxy)
+
+    return builder.getOrCreate()

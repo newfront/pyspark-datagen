@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package hockey.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HockeyPlayerProto";
+option java_package = "com.example.hockey.v1";
+
+// On-ice position for a hockey player.
+enum Position {
+  POSITION_UNSPECIFIED = 0;
+  POSITION_CENTER = 1;
+  POSITION_LEFT_WING = 2;
+  POSITION_RIGHT_WING = 3;
+  POSITION_DEFENSE = 4;
+  POSITION_GOALIE = 5;
+}
+
+// Roster / availability status for a player.
+enum PlayerStatus {
+  PLAYER_STATUS_UNSPECIFIED = 0;
+  PLAYER_STATUS_ACTIVE = 1;
+  PLAYER_STATUS_INJURED = 2;
+  PLAYER_STATUS_SUSPENDED = 3;
+}
+
+// Stick handedness (or catching glove for goalies).
+enum Handedness {
+  HANDEDNESS_UNSPECIFIED = 0;
+  HANDEDNESS_LEFT = 1;
+  HANDEDNESS_RIGHT = 2;
+}
+
+// HockeyPlayer represents a single NHL-style player roster record.
+// player_id is the stable UUID used as a foreign key in PlayEvent and FantasyRosterSnapshot.
+message HockeyPlayer {
+  string player_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  string first_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 42
+  }];
+
+  string last_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 42
+  }];
+
+  // Full team name, e.g. "Boston Bruins".
+  string team_name = 4 [(buf.validate.field).string = {min_len: 1}];
+
+  // 2–3 character team abbreviation, e.g. "BOS".
+  string team_abbreviation = 5 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 3
+  }];
+
+  Position position = 6 [(buf.validate.field).enum.defined_only = true];
+
+  // Jersey number (1–99).
+  uint32 jersey_number = 7 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 99
+  }];
+
+  // ISO 3166-1 alpha-3 nationality code, e.g. "USA", "CAN", "SWE".
+  string nationality = 8 [(buf.validate.field).string.len = 3];
+
+  // Shooting hand for skaters; catching glove side for goalies.
+  Handedness shoots_catches = 9 [(buf.validate.field).enum.defined_only = true];
+
+  PlayerStatus status = 10 [(buf.validate.field).enum.defined_only = true];
+
+  // When this player record was created.
+  google.protobuf.Timestamp created_at = 11 [(buf.validate.field).required = true];
+}
