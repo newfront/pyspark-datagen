@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package hockey.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PlayEventProto";
+option java_package = "com.example.hockey.v1";
+
+// What kind of in-game action this event represents.
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_GOAL = 1;
+  EVENT_TYPE_ASSIST = 2;
+  EVENT_TYPE_SHOT_ON_GOAL = 3;
+  EVENT_TYPE_SAVE = 4;
+  EVENT_TYPE_HIT = 5;
+  EVENT_TYPE_BLOCKED_SHOT = 6;
+  EVENT_TYPE_PENALTY = 7;
+  EVENT_TYPE_FACEOFF_WIN = 8;
+  EVENT_TYPE_FACEOFF_LOSS = 9;
+  EVENT_TYPE_TAKEAWAY = 10;
+  EVENT_TYPE_GIVEAWAY = 11;
+}
+
+// On-ice manpower situation when the event occurred.
+enum StrengthState {
+  STRENGTH_STATE_UNSPECIFIED = 0;
+  STRENGTH_STATE_EVEN = 1; // 5-on-5 even strength.
+  STRENGTH_STATE_POWER_PLAY = 2; // Team with advantage.
+  STRENGTH_STATE_PENALTY_KILL = 3; // Team killing a penalty.
+  STRENGTH_STATE_EMPTY_NET = 4; // Opposing goalie pulled.
+}
+
+// PlayEvent captures a single tracked in-game action by a player.
+// player_id links to HockeyPlayer.player_id; game_id groups events into a single game.
+message PlayEvent {
+  string event_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // UUID identifying the game this event belongs to.
+  string game_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Primary player credited with the event (scorer, shooter, saver, hitter, etc.).
+  // Links to HockeyPlayer.player_id.
+  string player_id = 3 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  EventType event_type = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // Game period: 1–3 regular, 4 = overtime.
+  uint32 period = 5 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 4
+  }];
+
+  // Elapsed game clock within the period in "mm:ss" format, e.g. "14:32".
+  string game_clock = 6 [(buf.validate.field).string = {min_len: 1}];
+
+  StrengthState strength_state = 7 [(buf.validate.field).enum.defined_only = true];
+
+  // Optional secondary player (e.g. second assist, or blocker on a blocked shot).
+  // Empty string when not applicable. Not UUID-validated because it is optional.
+  string secondary_player_id = 8;
+
+  // When the event occurred (UTC).
+  google.protobuf.Timestamp occurred_at = 9 [(buf.validate.field).required = true];
+
+  // NHL season identifier, e.g. "2024-25".
+  string season = 10 [(buf.validate.field).string = {min_len: 1}];
+
+  // Home team abbreviation, e.g. "BOS".
+  string home_team = 11 [(buf.validate.field).string = {min_len: 1}];
+
+  // Away team abbreviation, e.g. "TOR".
+  string away_team = 12 [(buf.validate.field).string = {min_len: 1}];
+
+  // Score at the time the event was recorded.
+  int32 home_score = 13;
+  int32 away_score = 14;
+}

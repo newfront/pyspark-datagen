@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package hockey.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FantasyRosterProto";
+option java_package = "com.example.hockey.v1";
+
+// Fantasy roster slot type, determining which real-life position may fill it.
+enum SlotType {
+  SLOT_TYPE_UNSPECIFIED = 0;
+  SLOT_TYPE_CENTER = 1; // Must be a Center.
+  SLOT_TYPE_LEFT_WING = 2; // Must be a Left Wing.
+  SLOT_TYPE_RIGHT_WING = 3; // Must be a Right Wing.
+  SLOT_TYPE_DEFENSE = 4; // Must be a Defenseman.
+  SLOT_TYPE_GOALIE = 5; // Must be a Goalie.
+  SLOT_TYPE_UTILITY = 6; // Any skater (C/LW/RW/D).
+  SLOT_TYPE_BENCH = 7; // Bench — does not score this week.
+}
+
+// RosterEntry is one player filling one slot on a fantasy team for a scoring week.
+// Fantasy points are computed from raw NHL stats using Yahoo H2H-points default weights:
+//   G=6, A=4, +/-=2, SOG=0.9, HIT=1, BLK=1, W(goalie)=5, GA=-3, SV=0.6.
+message RosterEntry {
+  // Links to HockeyPlayer.player_id.
+  string player_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  string player_name = 2 [(buf.validate.field).string = {min_len: 1}];
+
+  SlotType slot_type = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // Computed fantasy points for this player in this scoring week.
+  double fantasy_points = 4;
+
+  // Raw NHL stats accumulated during the scoring week.
+  uint32 goals = 5;
+  uint32 assists = 6;
+  uint32 shots_on_goal = 7;
+  uint32 hits = 8;
+  uint32 blocked_shots = 9;
+  uint32 penalty_minutes = 10;
+  int32 plus_minus = 11;
+
+  // Goalie-specific stats (zero for skaters).
+  uint32 wins = 12;
+  uint32 saves = 13;
+  uint32 goals_against = 14;
+
+  // True when this slot counts toward the team's weekly fantasy score (not bench).
+  bool is_active = 15;
+}
+
+// FantasyRosterSnapshot captures one fantasy team's full roster and weekly statistics
+// for a single NHL fantasy scoring week.  A series of snapshots with the same
+// fantasy_team_id traces that team's season-long trajectory.
+message FantasyRosterSnapshot {
+  string snapshot_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Stable identifier for the fantasy team (same across all weeks).
+  string fantasy_team_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // Display name for the fantasy team, e.g. "The Puck Stops Here".
+  string fantasy_team_name = 3 [(buf.validate.field).string = {min_len: 1}];
+
+  // League the team belongs to; all teams in the same league share a league_id.
+  string league_id = 4 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+
+  // ISO week string for the scoring period, e.g. "2024-W12".
+  string scoring_week = 5 [(buf.validate.field).string = {min_len: 1}];
+
+  // Current league rank (1 = first place) at end of this scoring week.
+  uint32 rank = 6 [(buf.validate.field).uint32 = {gte: 1}];
+
+  // Total fantasy points scored by active roster slots this week.
+  double total_fantasy_points = 7;
+
+  // Change in rank from the previous scoring week (positive = moved up, negative = dropped).
+  int32 rank_delta = 8;
+
+  // All 18 roster slots for the week (active + bench).
+  repeated RosterEntry roster = 9 [(buf.validate.field).repeated = {min_items: 1}];
+
+  // When this snapshot was captured (end of scoring week, UTC).
+  google.protobuf.Timestamp captured_at = 10 [(buf.validate.field).required = true];
+}

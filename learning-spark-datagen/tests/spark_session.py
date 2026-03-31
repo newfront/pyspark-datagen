@@ -1,30 +1,7 @@
-"""SparkSession builder for local and test runs (Delta Lake)."""
+"""Test SparkSession — delegates to the shared utility with a test app name."""
 
-from pyspark.sql import SparkSession
+from learning_spark_datagen.utils.spark_session import generate_spark_session as _gen
 
 
-def generate_spark_session(app_name: str = "learning-spark-datagen-test") -> SparkSession:
-    """Build a local SparkSession with Delta Lake for tests and local runs.
-
-    Uses local[*] and Delta 4.x. For production or notebooks, use
-    SparkSession.builder.getOrCreate() with your cluster config.
-    """
-    return (
-        SparkSession.builder.master("local[*]")
-        .appName(app_name)
-        .config(
-            "spark.jars.packages",
-            "io.delta:delta-spark_2.13:4.1.0,org.apache.spark:spark-protobuf_2.13:4.1.1",
-        )
-        .config(
-            "spark.driver.extraJavaOptions",
-            "-Divy.cache.dir=/tmp -Divy.home=/tmp -Dio.netty.tryReflectionSetAccessible=true",
-        )
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-        .config("spark.sql.session.timeZone", "UTC")
-        .getOrCreate()
-    )
+def generate_spark_session():
+    return _gen(app_name="learning-spark-datagen-test")
