@@ -1,4 +1,4 @@
-"""learning-spark-datagen: generate fake users and orders for learning Spark."""
+"""learning-spark-datagen: generate fake users, orders, and rain-sensor readings for learning Spark."""
 
 import argparse
 import json
@@ -11,7 +11,7 @@ for _path in (_root / "src", _root / "gen" / "python"):
     if _path.exists() and str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from learning_spark_datagen.datagen import GenUser, GenOrder  # noqa: E402
+from learning_spark_datagen.datagen import GenUser, GenOrder, GenRainSensor  # noqa: E402
 from learning_spark_datagen.utils import Converters, generate_spark_session  # noqa: E402
 
 
@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--generate", action="store_true", help="Run in generate mode")
     parser.add_argument(
         "--type",
-        choices=("users", "orders"),
+        choices=("users", "orders", "rain_sensors"),
         default="users",
         help="Type of records to generate (default: users)",
     )
@@ -45,6 +45,18 @@ def main():
         help="NDJSON of users; order user_id will link to these UUIDs (for --type orders)",
     )
     parser.add_argument(
+        "--num-sensors",
+        type=int,
+        default=20,
+        help="Number of IoT sensor sites for --type rain_sensors (default: 20, max 20 unique locations)",
+    )
+    parser.add_argument(
+        "--interval-minutes",
+        type=int,
+        default=5,
+        help="Sampling interval in minutes for --type rain_sensors (default: 5)",
+    )
+    parser.add_argument(
         "--format",
         choices=("json", "delta"),
         default="json",
@@ -58,7 +70,7 @@ def main():
             to_dict = GenUser.user_to_dict
             write_ndjson = GenUser.write_ndjson
             message_name = "user.v1.User"
-        else:
+        elif args.type == "orders":
             user_ids = None
             if args.users_file and args.users_file.exists():
                 user_ids = [u.uuid for u in GenUser.read_ndjson(args.users_file)]
@@ -66,6 +78,15 @@ def main():
             to_dict = GenOrder.order_to_dict
             write_ndjson = GenOrder.write_ndjson
             message_name = "order.v1.Order"
+        else:
+            gen = GenRainSensor(
+                seed=args.seed,
+                num_sensors=args.num_sensors,
+                interval_minutes=args.interval_minutes,
+            )
+            to_dict = GenRainSensor.reading_to_dict
+            write_ndjson = GenRainSensor.write_ndjson
+            message_name = "rain_sensor.v1.RainSensorReading"
         if args.output:
             if args.format == "delta":
                 descriptor_path = _root / "gen" / "descriptors" / "descriptor.bin"
@@ -102,7 +123,7 @@ def main():
                 print(json.dumps(to_dict(rec)))
         return
     print(
-        "Hello from learning-spark-datagen! Use --generate --type users|orders --count N [--output FILE]."
+        "Hello from learning-spark-datagen! Use --generate --type users|orders|rain_sensors --count N [--output FILE]."
     )
 
 

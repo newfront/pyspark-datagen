@@ -65,6 +65,11 @@ uv run python scripts/ndjson_to_delta.py <ndjson_path> <delta_path> <message_nam
 | Descriptor (required for Delta) | `learning-spark-datagen/gen/descriptors/descriptor.bin` |
 | Generators | `src/learning_spark_datagen/datagen/gen_user.py`, `gen_order.py` |
 
+## Dependency source notes
+
+- Keep repository/index URLs vendor-neutral in project files (`pyproject.toml`, `uv.lock`, Spark config).
+- Do not hardcode Databricks proxy URLs; if a proxy is required in a local environment, set it via user/tooling config outside the repo.
+
 ## Summary
 
 - **Users then orders:** Generate users to NDJSON → generate orders with `--users-file` (and optionally `--format delta`).

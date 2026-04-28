@@ -3,19 +3,29 @@ name = "learning-spark-datagen"
 version = "0.1.0"
 description = "Generate fake data for learning Spark; protos and Python tooling."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "bufbuild-protovalidate-protocolbuffers-python==33.5.0.1.20260209202127+80ab13bee0bf",
+    "bufbuild-protovalidate-protocolbuffers-pyi>=33.5.0.1.20260209202127",
     "faker>=33.0.0",
     "pyspark==4.1.1",
     "delta-spark==4.1.0",
-    "protobuf>=6.33.0",
+    "protobuf>=7.34.1",
     "protovalidate>=1.1.1",
     "python-dotenv>=1.2.1",
 ]
 
 [tool.uv]
-extra-index-url = ["https://buf.build/gen/python"]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "buf"
+url = "https://buf.build/gen/python"
+explicit = true
+
+[tool.uv.sources]
+bufbuild-protovalidate-protocolbuffers-python = { index = "buf" }
+bufbuild-protovalidate-protocolbuffers-pyi = { index = "buf" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "gen/python"]
