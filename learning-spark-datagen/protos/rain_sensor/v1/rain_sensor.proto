@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package rain_sensor.v1;
+
+import "buf/validate/validate.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RainSensorProto";
+option java_package = "com.example.rain_sensor.v1";
+
+// Geographic coordinates for a sensor deployment site.
+message GeoLocation {
+  double latitude = 1 [(buf.validate.field).double = {
+    gte: -90.0,
+    lte: 90.0
+  }];
+  double longitude = 2 [(buf.validate.field).double = {
+    gte: -180.0,
+    lte: 180.0
+  }];
+  double altitude_meters = 3;
+  string place_name = 4 [(buf.validate.field).string = {min_len: 1}];
+}
+
+// WMO-scale categorisation of rainfall rate.
+enum RainIntensity {
+  RAIN_INTENSITY_UNSPECIFIED = 0;
+  RAIN_INTENSITY_NONE = 1; // 0 mm/hr
+  RAIN_INTENSITY_LIGHT = 2; // < 2.5 mm/hr
+  RAIN_INTENSITY_MODERATE = 3; // 2.5 – 7.6 mm/hr
+  RAIN_INTENSITY_HEAVY = 4; // 7.6 – 50 mm/hr
+  RAIN_INTENSITY_VIOLENT = 5; // > 50 mm/hr
+}
+
+// A single time-series reading from a deployed IoT rain sensor.
+message RainSensorReading {
+  // Unique identifier for this reading.
+  string reading_id = 1 [(buf.validate.field).string.uuid = true];
+  // Sensor device that produced the reading.
+  string sensor_id = 2 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Unix milliseconds when the reading was captured.
+  uint64 timestamp_ms = 3 [(buf.validate.field).required = true];
+  // Fixed deployment location of the sensor.
+  GeoLocation location = 4 [(buf.validate.field).required = true];
+
+  // Precipitation accumulated during the sampling interval (mm).
+  double precipitation_mm = 5 [(buf.validate.field).double = {gte: 0.0}];
+  // WMO intensity classification derived from the hourly rate.
+  RainIntensity rain_intensity = 6 [(buf.validate.field).enum.defined_only = true];
+  // Whether any precipitation was detected during the interval.
+  bool is_raining = 7;
+
+  // Ambient temperature at the sensor (°C).
+  double temperature_celsius = 8;
+  // Relative humidity (%).
+  double humidity_percent = 9 [(buf.validate.field).double = {
+    gte: 0.0,
+    lte: 100.0
+  }];
+  // Barometric pressure at station level (hPa / mbar).
+  double pressure_hpa = 10 [(buf.validate.field).double = {
+    gte: 600.0,
+    lte: 1100.0
+  }];
+  // Wind speed (km/h).
+  double wind_speed_kmh = 11 [(buf.validate.field).double = {gte: 0.0}];
+  // Wind direction in degrees (0 = N, 90 = E, 180 = S, 270 = W).
+  double wind_direction_degrees = 12 [(buf.validate.field).double = {
+    gte: 0.0,
+    lt: 360.0
+  }];
+
+  // Battery charge remaining on the sensor device (%).
+  uint32 battery_level_percent = 13 [(buf.validate.field).uint32 = {lte: 100}];
+  // Wireless signal strength (dBm, typically negative).
+  int32 signal_strength_dbm = 14;
+}
