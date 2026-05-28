@@ -17,7 +17,9 @@ def test_protobuf_to_df_users(spark):
     """Convert static users from test resources to DataFrame and write to Delta."""
     users_path = _RESOURCES / "users.ndjson"
     assert users_path.exists(), "Run from project root; static users.ndjson must exist"
-    assert _DESCRIPTOR_PATH.exists(), "Run 'make descriptor' to create gen/descriptors/descriptor.bin"
+    assert _DESCRIPTOR_PATH.exists(), (
+        "Run 'make descriptor' to create gen/descriptors/descriptor.bin"
+    )
 
     users = GenUser.read_ndjson(users_path)
     data = [u.SerializeToString() for u in users]
@@ -48,8 +50,12 @@ def test_protobuf_to_df_users(spark):
 def test_protobuf_to_df_orders(spark):
     """Convert static orders from test resources to DataFrame and write to Delta."""
     orders_path = _RESOURCES / "orders.ndjson"
-    assert orders_path.exists(), "Run from project root; static orders.ndjson must exist"
-    assert _DESCRIPTOR_PATH.exists(), "Run 'make descriptor' to create gen/descriptors/descriptor.bin"
+    assert orders_path.exists(), (
+        "Run from project root; static orders.ndjson must exist"
+    )
+    assert _DESCRIPTOR_PATH.exists(), (
+        "Run 'make descriptor' to create gen/descriptors/descriptor.bin"
+    )
 
     orders = GenOrder.read_ndjson(orders_path)
     data = [o.SerializeToString() for o in orders]

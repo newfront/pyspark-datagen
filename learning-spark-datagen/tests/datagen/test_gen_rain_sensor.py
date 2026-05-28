@@ -91,7 +91,9 @@ def test_timestamps_increase_for_same_sensor():
         sensor_timeseries.setdefault(r.sensor_id, []).append(r.timestamp_ms)
     for sid, ts_list in sensor_timeseries.items():
         for i in range(1, len(ts_list)):
-            assert ts_list[i] > ts_list[i - 1], f"Sensor {sid}: timestamps not increasing"
+            assert ts_list[i] > ts_list[i - 1], (
+                f"Sensor {sid}: timestamps not increasing"
+            )
             assert ts_list[i] - ts_list[i - 1] == 5 * 60 * 1000
 
 

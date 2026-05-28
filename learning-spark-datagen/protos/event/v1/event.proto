@@ -1,0 +1,166 @@
+syntax = "proto3";
+
+package event.v1;
+
+import "buf/validate/validate.proto";
+import "commerce/v1/amount.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventProto";
+option java_package = "com.example.event.v1";
+
+// Item is the GA4-shape line item embedded in ecommerce events (view_item, add_to_cart,
+// view_cart, begin_checkout, purchase, refund, ...).
+// item_id corresponds to product.v1.Product.product_id.
+message Item {
+  string item_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  string sku = 2 [(buf.validate.field).string = {min_len: 1}];
+  string item_name = 3 [(buf.validate.field).string = {min_len: 1}];
+  string item_brand = 4 [(buf.validate.field).string = {min_len: 1}];
+  string item_category = 5;
+  string item_category2 = 6;
+  string item_variant = 7;
+  string size = 8;
+  commerce.v1.Amount price = 9 [(buf.validate.field).required = true];
+  uint32 quantity = 10 [(buf.validate.field).uint32 = {gte: 1}];
+  int32 percent_discount = 11 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+// Per-event-type strongly typed payloads. Only event-specific fields go here;
+// shared fields (user_id, session_id, ts, items[], value, ...) live on Event.
+
+message SessionStart {
+  bool is_first_session = 1;
+  string landing_page = 2;
+}
+
+message ViewItemList {
+  string item_list_id = 1;
+  string item_list_name = 2;
+}
+
+message ViewItem {
+  string item_list_id = 1;
+  string item_list_name = 2;
+}
+
+message AddToCart {
+  string cart_id = 1;
+}
+
+message ViewCart {
+  string cart_id = 1;
+  uint32 num_items = 2;
+}
+
+message RemoveFromCart {
+  string cart_id = 1;
+  string reason = 2;
+}
+
+message BeginCheckout {
+  string cart_id = 1;
+  string coupon = 2;
+}
+
+message AddShippingInfo {
+  string cart_id = 1;
+  string shipping_tier = 2; // "Ground" | "Express" | "Overnight"
+  commerce.v1.Amount shipping_cost = 3;
+}
+
+message AddPaymentInfo {
+  string cart_id = 1;
+  string payment_method = 2; // "credit_card" | "paypal" | "apple_pay" | "google_pay"
+}
+
+message Purchase {
+  string transaction_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  string coupon = 2;
+  commerce.v1.Amount tax = 3;
+  commerce.v1.Amount shipping = 4;
+  string payment_method = 5;
+  string shipping_tier = 6;
+}
+
+message Refund {
+  string transaction_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  commerce.v1.Amount refund_amount = 2 [(buf.validate.field).required = true];
+  string reason = 3;
+}
+
+// Event is the GA4-style envelope for every recorded interaction in a user session.
+// One Event per row; the `event_name` discriminates and `payload` carries event-specific fields.
+message Event {
+  // Stable identifier for this event (UUID).
+  string event_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // GA4 event name: "session_start", "view_item_list", "view_item", "add_to_cart",
+  // "view_cart", "remove_from_cart", "begin_checkout", "add_shipping_info",
+  // "add_payment_info", "purchase", "refund".
+  string event_name = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Links to User.uuid.
+  string user_id = 3 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Stable across all events in the same browsing session.
+  string session_id = 4 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Unix milliseconds when the event fired (monotonic within a session).
+  uint64 event_timestamp_ms = 5 [(buf.validate.field).required = true];
+
+  // Device / context (GA4-ish).
+  string device_category = 6; // "mobile" | "desktop" | "tablet"
+  string operating_system = 7;
+  string country = 8;
+  string region = 9;
+  string city = 10;
+
+  // Traffic source attribution.
+  string source = 11; // "google" | "direct" | "email" | "paid_social" | ...
+  string medium = 12; // "organic" | "cpc" | "referral" | "email"
+  string campaign = 13;
+
+  // Page / screen context.
+  string page_location = 14;
+  string page_referrer = 15;
+
+  // Ecommerce line items (used by most events; empty for session_start).
+  repeated Item items = 16;
+  // ISO 4217 currency for monetary fields on this event.
+  string currency = 17;
+  // Monetary value of the event (e.g. cart total at view_cart, order total at purchase).
+  commerce.v1.Amount value = 18;
+
+  // Strongly typed per-event-name payload.
+  oneof payload {
+    SessionStart session_start = 50;
+    ViewItemList view_item_list = 51;
+    ViewItem view_item = 52;
+    AddToCart add_to_cart = 53;
+    ViewCart view_cart = 54;
+    RemoveFromCart remove_from_cart = 55;
+    BeginCheckout begin_checkout = 56;
+    AddShippingInfo add_shipping_info = 57;
+    AddPaymentInfo add_payment_info = 58;
+    Purchase purchase = 59;
+    Refund refund = 60;
+  }
+}

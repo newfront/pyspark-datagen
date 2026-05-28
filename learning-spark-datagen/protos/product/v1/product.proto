@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package product.v1;
+
+import "buf/validate/validate.proto";
+import "commerce/v1/amount.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductProto";
+option java_package = "com.example.product.v1";
+
+// Product represents a SKU in a retail catalog (Tidewell athleisure by default).
+// Generated once, referenced by every ecommerce Event's items[].item_id.
+message Product {
+  // Stable catalog identifier (UUID).
+  string product_id = 1 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).required = true
+  ];
+  // Human-readable SKU (e.g. "TW-LEG-SLT-M").
+  string sku = 2 [(buf.validate.field).string = {min_len: 1}];
+  // Display name (e.g. "Tidal Crop Legging").
+  string name = 3 [(buf.validate.field).string = {min_len: 1}];
+  // Brand name (e.g. "Tidewell").
+  string brand = 4 [(buf.validate.field).string = {min_len: 1}];
+  // Top-level category (e.g. "Tops", "Bottoms", "Outerwear", "Swim", "Accessories").
+  string category = 5 [(buf.validate.field).string = {min_len: 1}];
+  // Subcategory (e.g. "Sports Bra", "Legging", "Rashguard").
+  string category2 = 6;
+  // Color / variant (e.g. "Slate", "Sea Glass").
+  string variant = 7;
+  // Size (e.g. "XS", "S", "M", "L", "XL", "OS").
+  string size = 8;
+  // Retail price per unit.
+  commerce.v1.Amount price = 9 [(buf.validate.field).required = true];
+  // Active percent discount at catalog time (0-100).
+  int32 percent_discount = 10 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // When this SKU was added to the catalog (must not be in the future).
+  google.protobuf.Timestamp created = 11 [(buf.validate.field).timestamp.lt_now = true];
+  // Whether this SKU is currently sellable.
+  bool in_stock = 12;
+  // Approximate on-hand inventory (denormalized; for funnel realism).
+  uint32 inventory_count = 13;
+}

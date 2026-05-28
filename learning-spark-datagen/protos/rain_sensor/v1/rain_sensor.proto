@@ -11,11 +11,11 @@ option java_package = "com.example.rain_sensor.v1";
 // Geographic coordinates for a sensor deployment site.
 message GeoLocation {
   double latitude = 1 [(buf.validate.field).double = {
-    gte: -90.0,
+    gte: -90.0
     lte: 90.0
   }];
   double longitude = 2 [(buf.validate.field).double = {
-    gte: -180.0,
+    gte: -180.0
     lte: 180.0
   }];
   double altitude_meters = 3;
@@ -57,19 +57,19 @@ message RainSensorReading {
   double temperature_celsius = 8;
   // Relative humidity (%).
   double humidity_percent = 9 [(buf.validate.field).double = {
-    gte: 0.0,
+    gte: 0.0
     lte: 100.0
   }];
   // Barometric pressure at station level (hPa / mbar).
   double pressure_hpa = 10 [(buf.validate.field).double = {
-    gte: 600.0,
+    gte: 600.0
     lte: 1100.0
   }];
   // Wind speed (km/h).
   double wind_speed_kmh = 11 [(buf.validate.field).double = {gte: 0.0}];
   // Wind direction in degrees (0 = N, 90 = E, 180 = S, 270 = W).
   double wind_direction_degrees = 12 [(buf.validate.field).double = {
-    gte: 0.0,
+    gte: 0.0
     lt: 360.0
   }];
 
