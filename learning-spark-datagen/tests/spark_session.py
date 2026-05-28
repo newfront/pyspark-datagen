@@ -1,15 +1,25 @@
 """SparkSession builder for local and test runs (Delta Lake)."""
 
+import os
+
 from pyspark.sql import SparkSession
 
 
-def generate_spark_session(app_name: str = "learning-spark-datagen-test") -> SparkSession:
+def generate_spark_session(
+    app_name: str = "learning-spark-datagen-test",
+) -> SparkSession:
     """Build a local SparkSession with Delta Lake for tests and local runs.
 
     Uses local[*] and Delta 4.x. For production or notebooks, use
     SparkSession.builder.getOrCreate() with your cluster config.
+
+    Maven proxy: if the ``MAVEN_PROXY`` environment variable is set (e.g. an
+    internal mirror URL), its value is passed to Spark via
+    ``spark.jars.repositories`` so that ``--packages`` / ``spark.jars.packages``
+    resolution goes through that proxy. The env var is the only source — no
+    vendor URLs are hardcoded in this repo.
     """
-    return (
+    builder = (
         SparkSession.builder.master("local[*]")
         .appName(app_name)
         .config(
@@ -26,5 +36,8 @@ def generate_spark_session(app_name: str = "learning-spark-datagen-test") -> Spa
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
         .config("spark.sql.session.timeZone", "UTC")
-        .getOrCreate()
     )
+    maven_proxy = os.environ.get("MAVEN_PROXY")
+    if maven_proxy:
+        builder = builder.config("spark.jars.repositories", maven_proxy)
+    return builder.getOrCreate()

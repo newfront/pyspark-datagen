@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package commerce.v1;
+
+import "buf/validate/validate.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AmountProto";
+option java_package = "com.example.commerce.v1";
+
+// Amount represents a monetary value split into whole units and nanos (1e-9 of a unit).
+// Shared across product catalogs and ecommerce events so they all speak the same money type.
+// Example: $12.99 USD => currency="USD", units=12, nanos=990000000.
+message Amount {
+  string currency = 1 [(buf.validate.field).string = {min_len: 1}]; // ISO 4217 (e.g. "USD").
+  uint32 units = 2; // Whole units of currency.
+  uint32 nanos = 3 [(buf.validate.field).uint32 = {lt: 1000000000}]; // Fractional part, < 1e9.
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession
@@ -69,6 +70,28 @@ class Converters:
         df.write.format("delta").mode(mode).save(str(delta_path))
 
 
+def _ndjson_readers() -> dict[str, Callable]:
+    """Map fully-qualified proto message names to their NDJSON reader functions.
+
+    Importing inside the function avoids a circular import with `learning_spark_datagen.datagen`.
+    """
+    from learning_spark_datagen.datagen import (
+        GenOrder,
+        GenProduct,
+        GenRainSensor,
+        GenSession,
+        GenUser,
+    )
+
+    return {
+        "user.v1.User": GenUser.read_ndjson,
+        "order.v1.Order": GenOrder.read_ndjson,
+        "rain_sensor.v1.RainSensorReading": GenRainSensor.read_ndjson,
+        "product.v1.Product": GenProduct.read_ndjson,
+        "event.v1.Event": GenSession.read_ndjson,
+    }
+
+
 def ndjson_file_to_delta(
     ndjson_path: str | Path,
     message_name: str,
@@ -78,16 +101,18 @@ def ndjson_file_to_delta(
 ) -> None:
     """Read an NDJSON file, convert to DataFrame via protobuf descriptor, write Delta table.
 
-    message_name must be "user.v1.User" or "order.v1.Order" (determines which reader is used).
+    Supported `message_name` values are the keys of `_ndjson_readers()`:
+    "user.v1.User", "order.v1.Order", "rain_sensor.v1.RainSensorReading",
+    "product.v1.Product", "event.v1.Event".
     """
-    from learning_spark_datagen.datagen import GenOrder, GenUser
-
-    if message_name == "user.v1.User":
-        records = GenUser.read_ndjson(ndjson_path)
-    elif message_name == "order.v1.Order":
-        records = GenOrder.read_ndjson(ndjson_path)
-    else:
-        raise ValueError(f"Unsupported message_name: {message_name}")
+    readers = _ndjson_readers()
+    reader = readers.get(message_name)
+    if reader is None:
+        raise ValueError(
+            f"Unsupported message_name: {message_name}. "
+            f"Supported: {sorted(readers.keys())}"
+        )
+    records = reader(ndjson_path)
     data = [r.SerializeToString() for r in records]
     df = Converters.protobuf_to_df(
         data=data,

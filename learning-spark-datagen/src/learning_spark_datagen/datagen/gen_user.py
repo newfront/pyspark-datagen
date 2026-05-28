@@ -135,3 +135,20 @@ class GenUser:
                 json_format.ParseDict(d, user)
                 users.append(user)
         return users
+
+    @staticmethod
+    def read_delta(spark, path: str | Path) -> list[user_pb2.User]:
+        """Read users from a Delta table written via `Converters.write_df_to_delta`.
+
+        Spark serializes each row to JSON; we parse that JSON into a `User` proto
+        with `json_format.ParseDict`, mirroring `read_ndjson` exactly. Requires a
+        SparkSession (created via `generate_spark_session()` or the builder).
+        """
+        df = spark.read.format("delta").load(str(path))
+        users = []
+        for s in df.toJSON().collect():
+            d = json.loads(s)
+            user = user_pb2.User()
+            json_format.ParseDict(d, user, ignore_unknown_fields=True)
+            users.append(user)
+        return users
