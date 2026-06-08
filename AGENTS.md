@@ -2,6 +2,18 @@
 
 Quick reference for AI agents (and humans) so you don’t have to scan the README or multiple files to run data generation and Delta workflows.
 
+## Reusable skills
+
+The `.skills/` directory at the project root contains vendor-neutral, step-by-step instructions for common tasks. Any agent (Claude Code, Codex, Cursor, Copilot, etc.) can use them:
+
+1. List `.skills/` to discover what skills are available.
+2. When your task matches a skill, read its `SKILL.md` and follow the steps.
+3. If no skill matches, proceed with your best judgment using this file as context.
+
+| Skill | When to use |
+|-------|-------------|
+| [add-datagen-generator](.skills/add-datagen-generator/SKILL.md) | Adding a new entity type (proto + generator + CLI + tests). |
+
 ## Where to run
 
 All commands below assume you’re in **`learning-spark-datagen/`** (the package with `main.py` and `pyproject.toml`). Use `uv run` to execute the CLI.
