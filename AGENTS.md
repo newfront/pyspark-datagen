@@ -2,6 +2,18 @@
 
 Quick reference for AI agents (and humans) so you don’t have to scan the README or multiple files to run data generation and Delta workflows.
 
+## Agent rules and skills (load these automatically)
+
+Project-specific rules and skills live under **`.agents/`** (not `.cursor/`). This `AGENTS.md` is loaded automatically, so at the start of any task in this repo, also load and follow the following:
+
+- **Rules** — read every file in `.agents/rules/` and apply them as always-on guidance:
+  - [`.agents/rules/agents-and-tests.mdc`](.agents/rules/agents-and-tests.mdc) — when you find a better approach, update `AGENTS.md`, add/extend unit tests, and fix one problem at a time.
+  - [`.agents/rules/git-branching.mdc`](.agents/rules/git-branching.mdc) — never commit directly to `main`; before starting work, check the current branch and (if on `main`) create a feature branch first. Use `AskQuestion` to offer a suggested `feat/<short-description>` name or let the user provide their own. Prefixes: `feat/`, `fix/`, `chore/`, `refactor/`, `test/`. One logical unit of work per branch.
+- **Skills** — when a task matches a skill's description, read its `SKILL.md` first and follow it:
+  - [`.agents/skills/add-datagen-generator/SKILL.md`](.agents/skills/add-datagen-generator/SKILL.md) — add a new Protobuf-backed data generator (new proto, `GenX` class, CLI, tests) following the User/Order pattern.
+
+> If you add new rules or skills, drop them under `.agents/rules/` or `.agents/skills/<name>/SKILL.md` and add a bullet here so they continue to load automatically.
+
 ## Where to run
 
 All commands below assume you’re in **`learning-spark-datagen/`** (the package with `main.py` and `pyproject.toml`). Use `uv run` to execute the CLI.
