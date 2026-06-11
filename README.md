@@ -96,4 +96,4 @@ No vendor URL is hardcoded in the repo; the env var is the only source.
 
 ## Agent guide
 
-For a deeper dive (proto layout, file locations, funnel internals, contributing a new generator), see [AGENTS.md](AGENTS.md) and [.cursor/skills/add-datagen-generator/SKILL.md](.cursor/skills/add-datagen-generator/SKILL.md).
+For a deeper dive (proto layout, file locations, funnel internals, contributing a new generator), see [AGENTS.md](AGENTS.md) and [.agents/skills/add-datagen-generator/SKILL.md](.agents/skills/add-datagen-generator/SKILL.md).
